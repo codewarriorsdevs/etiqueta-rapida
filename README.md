@@ -117,8 +117,5 @@ Como este é um projeto proprietário, as contribuições externas não são ace
 
 Distribuído sob a licença "Todos os Direitos Reservados".
 
-## ✉️ Contato
 
-Nome do Responsável - [@seu_user_github](https://github.com/seu_user_github) - contato@etiquetarapida.com.br
 
-Link do Projeto: [https://github.com/seu_user_github/etiqueta-rapida](https://github.com/seu_user_github/etiqueta-rapida)
