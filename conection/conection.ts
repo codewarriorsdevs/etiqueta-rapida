@@ -19,16 +19,17 @@ export class PrinterService {
   }
 
 
-  async lookingForPrinter(): Promise<IBLEPrinterIdentity[]> {
+  async lookingForPrinter(): Promise<String> {
     try {
  
       const availablePrinters: IBLEPrinterIdentity[] = await BLEPrinter.getDeviceList();
       this.printers = availablePrinters;
-      return this.printers;
+      const stringPrinter = JSON.stringify(this.printers);
+      return stringPrinter;
 
     } catch (error) {
       console.error('Falha ao descobrir impressoras:', error);
-      return []; // Retorna um array vazio em caso de erro
+      return ""; 
     }
   }
 
@@ -48,14 +49,8 @@ export class PrinterService {
     }
   }
 
-  /**
-   * Imprime o conteúdo da etiqueta formatado.
-   * @param labelData - Objeto com os dados da etiqueta.
-   * @param quantity - A quantidade de vezes para imprimir.
-   */
-  async printLabel(labelData: { manufacturingDate: string; expiryDate: string }, quantity: number): Promise<void> {
-    const { manufacturingDate, expiryDate } = labelData;
-    
+  
+  async printLabel(): Promise<void> {
     // Formata o texto que será enviado para a impressora.
     // Use os comandos da sua impressora (ex: ESC/POS) para formatação avançada.
     const printContent = `
