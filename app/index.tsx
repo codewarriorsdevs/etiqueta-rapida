@@ -8,20 +8,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  FlatList,
   ActivityIndicator,
 } from 'react-native';
 
-import { PrinterService } from '@/conection/conection';
-
-// Ícone para o cabeçalho
-
-const printerService = new PrinterService()
-
-const PrinterIcon = ({ size = 50 }) => (
-  <Text style={[styles.headerIcon, { fontSize: size }]}>🖨️</Text>
+// --- Tela de Impressão de Etiquetas (O seu código original) ---
+const PrinterIcon = () => (
+  <Text style={styles.headerIcon}>🖨️</Text>
 );
 
-// Campo de entrada com rótulo
 const InputField = ({ label, value, onChangeText, placeholder, keyboardType = 'default' }) => (
   <View style={styles.inputContainer}>
     <Text style={styles.label}>{label}</Text>
@@ -36,64 +31,7 @@ const InputField = ({ label, value, onChangeText, placeholder, keyboardType = 'd
   </View>
 );
 
-// --- Tela de Descoberta de Impressora ---
-
-const PrinterDiscoveryScreen = ({ onConnect }) => {
-  const [selectedPrinter, setSelectedPrinter] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Simulação de impressoras encontradas
-
-
-  const handleConnect = () => {
-    if (selectedPrinter) {
-      setIsConnecting(true);
-      // Simula um tempo de conexão
-      setTimeout(() => {
-        setIsConnecting(false);
-        onConnect(selectedPrinter);
-      }, 1500);
-    }
-  };
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <PrinterIcon size={60} />
-        <Text style={styles.title}>Conectar à Impressora</Text>
-        <Text style={styles.subtitle}>Selecione uma impressora da lista para continuar.</Text>
-      </View>
-
-      <View style={styles.printerList}>
-        {printerService.lookingForPrinter()?(
-          <TouchableOpacity>
-            <Text>
-              {printerService.lookingForPrinter()}
-            </Text>
-          </TouchableOpacity>
-        ):(null)}
-
-      </View>
-
-      <TouchableOpacity
-        style={[styles.actionButton, !selectedPrinter && styles.buttonDisabled]}
-        onPress={handleConnect}
-        disabled={!selectedPrinter || isConnecting}
-      >
-        {isConnecting ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.actionButtonText}>Conectar</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-
-// --- Tela de Impressão de Etiqueta ---
-
-const LabelPrinterScreen = ({ printer, onDisconnect }) => {
+const PrintScreen = ({ onBack }) => {
   const [manufacturingDate, setManufacturingDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -107,71 +45,144 @@ const LabelPrinterScreen = ({ printer, onDisconnect }) => {
       return;
     }
     Alert.alert(
-      "Imprimindo...",
-      `Enviando ${quantity} etiqueta(s) para a impressora ${printer.name}.`
+      "Impressão Enviada",
+      `Etiqueta com validade em ${expiryDate} enviada para a impressora.`
     );
   };
 
   return (
     <View style={styles.container}>
-        <TouchableOpacity style={styles.backButton} onPress={onDisconnect}>
-            <Text style={styles.backButtonText}>← Voltar</Text>
+        <View style={styles.header}>
+            <PrinterIcon />
+            <Text style={styles.title}>Impressora de Etiquetas</Text>
+            <Text style={styles.subtitle}>Preencha as informações para gerar a etiqueta.</Text>
+        </View>
+
+        <View style={styles.form}>
+            <InputField
+                label="Data de Fabricação"
+                value={manufacturingDate}
+                onChangeText={setManufacturingDate}
+                placeholder="DD/MM/AAAA"
+            />
+            <InputField
+                label="Data de Validade"
+                value={expiryDate}
+                onChangeText={setExpiryDate}
+                placeholder="DD/MM/AAAA"
+            />
+            <InputField
+                label="Quantidade de Impressões"
+                value={quantity}
+                onChangeText={setQuantity}
+                placeholder="Ex: 10"
+                keyboardType="numeric"
+            />
+        </View>
+        
+        <TouchableOpacity style={styles.printButton} onPress={handlePrint}>
+            <Text style={styles.printButtonText}>Imprimir</Text>
         </TouchableOpacity>
 
-      <View style={styles.header}>
-        <PrinterIcon />
-        <Text style={styles.title}>Impressora de Etiquetas</Text>
-        <Text style={styles.subtitle}>Conectado a: {printer.name}</Text>
-      </View>
-
-      <View style={styles.form}>
-        <InputField
-          label="Data de Fabricação"
-          value={manufacturingDate}
-          onChangeText={setManufacturingDate}
-          placeholder="DD/MM/AAAA"
-        />
-        <InputField
-          label="Data de Validade"
-          value={expiryDate}
-          onChangeText={setExpiryDate}
-          placeholder="DD/MM/AAAA"
-        />
-        <InputField
-          label="Quantidade de Impressões"
-          value={quantity}
-          onChangeText={setQuantity}
-          placeholder="Ex: 10"
-          keyboardType="numeric"
-        />
-      </View>
-
-      <TouchableOpacity style={styles.actionButton} onPress={handlePrint}>
-        <Text style={styles.actionButtonText}>Imprimir</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={[styles.printButton, styles.backButton]} onPress={onBack}>
+            <Text style={styles.printButtonText}>Voltar</Text>
+        </TouchableOpacity>
     </View>
   );
 };
 
 
-// --- Componente Principal do App ---
+// --- Nova Tela de Seleção de Impressora ---
+const mockPrinters = [
+    { id: '1', name: 'Zebra ZD220', status: 'Online' },
+    { id: '2', name: 'Elgin L42 Pro', status: 'Online' },
+    { id: '3', name: 'Brother QL-800', status: 'Offline' },
+    { id: '4', name: 'Argox OS-214 Plus', status: 'Online' },
+];
 
+const PrinterSelectionScreen = ({ onConnect }) => {
+    const [loading, setLoading] = useState(false);
+
+    const handleConnect = (printer) => {
+        if (printer.status === 'Offline') {
+            Alert.alert("Erro", "Esta impressora está offline e não pode ser conectada.");
+            return;
+        }
+        setLoading(true);
+        // Simula uma conexão de 1.5 segundos
+        setTimeout(() => {
+            setLoading(false);
+            onConnect(printer);
+        }, 1500);
+    };
+
+    const renderPrinter = ({ item }) => (
+        <View style={styles.printerItem}>
+            <View>
+                <Text style={styles.printerName}>{item.name}</Text>
+                <Text style={[
+                    styles.printerStatus,
+                    { color: item.status === 'Online' ? '#28A745' : '#DC3545' }
+                ]}>
+                    {item.status}
+                </Text>
+            </View>
+            <TouchableOpacity 
+                style={[styles.connectButton, item.status === 'Offline' && styles.disabledButton]} 
+                onPress={() => handleConnect(item)}
+                disabled={item.status === 'Offline'}>
+                <Text style={styles.connectButtonText}>Conectar</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    if (loading) {
+        return (
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Conectando...</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.headerIcon}>📡</Text>
+                <Text style={styles.title}>Buscar Impressoras</Text>
+                <Text style={styles.subtitle}>Selecione uma impressora para conectar.</Text>
+            </View>
+            <FlatList
+                data={mockPrinters}
+                renderItem={renderPrinter}
+                keyExtractor={item => item.id}
+                style={styles.list}
+            />
+        </View>
+    );
+};
+
+
+// --- Componente Principal que gerencia a navegação ---
 const App = () => {
   const [connectedPrinter, setConnectedPrinter] = useState(null);
+
+  const handleConnection = (printer) => {
+    setConnectedPrinter(printer);
+  };
+
+  const handleDisconnect = () => {
+    setConnectedPrinter(null);
+  };
 
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor="#F4F7FC" />
       <SafeAreaView style={styles.safeArea}>
         {connectedPrinter ? (
-          <LabelPrinterScreen
-            printer={connectedPrinter}
-            onDisconnect={() => setConnectedPrinter(null)}
-          />
+          <PrintScreen onBack={handleDisconnect} />
         ) : (
-          <PrinterDiscoveryScreen
-            onConnect={(printer) => setConnectedPrinter(printer)}
-          />
+          <PrinterSelectionScreen onConnect={handleConnection} />
         )}
       </SafeAreaView>
     </>
@@ -179,7 +190,6 @@ const App = () => {
 };
 
 // --- Estilos ---
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -189,6 +199,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F4F7FC',
   },
   header: {
     alignItems: 'center',
@@ -202,41 +219,13 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     color: '#1E2A3A',
-    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#6A7A8F',
-    marginTop: 8,
+    marginTop: 5,
     textAlign: 'center',
   },
-  // Estilos da lista de impressoras
-  printerList: {
-    marginBottom: 30,
-  },
-  printerItem: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DDE3EC',
-    marginBottom: 12,
-  },
-  printerItemSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  printerItemText: {
-    fontSize: 16,
-    color: '#1E2A3A',
-    fontWeight: '500',
-  },
-  printerItemSelectedText: {
-      color: '#FFFFFF',
-      fontWeight: 'bold',
-  },
-  // Estilos do formulário
   form: {
     width: '100%',
     marginBottom: 30,
@@ -260,8 +249,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDE3EC',
   },
-  // Botão principal
-  actionButton: {
+  printButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 15,
     borderRadius: 12,
@@ -276,28 +264,59 @@ const styles = StyleSheet.create({
     shadowRadius: 4.65,
     elevation: 8,
   },
-  actionButtonText: {
+  backButton: {
+    backgroundColor: '#6c757d',
+    marginTop: 15,
+    shadowColor: "#6c757d",
+  },
+  printButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  buttonDisabled: {
-    backgroundColor: '#A9A9A9',
-    shadowColor: 'transparent',
-    elevation: 0,
+  // Estilos da tela de seleção
+  list: {
+    width: '100%',
   },
-  // Botão de voltar
-  backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    padding: 10,
+  printerItem: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#DDE3EC',
   },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
+  printerName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E2A3A',
+  },
+  printerStatus: {
+    fontSize: 14,
     fontWeight: '500',
   },
+  connectButton: {
+    backgroundColor: '#28A745',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#6c757d',
+  },
+  connectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#6A7A8F',
+  }
 });
 
 export default App;
